@@ -36,8 +36,6 @@ function findAirHandlerMatch(map: Map<string, number>, _size: number): Component
 
     map.forEach((size, modelNumber) => {
         if (size === _size) {
-            const data = equipmentData.airHandler[modelNumber];
-
             equipment[modelNumber] = equipmentData.airHandler[modelNumber];
         }
     });
@@ -78,7 +76,6 @@ function getGroupsMap(_groups: GroupZoneData): Map<string, Map<string, ZoneData>
 
     Object.keys(_groups).forEach(groupName => {
         const data = _groups[groupName]
-        console.log(data);
         group.set(groupName, getZoneMap(data));
     });
 
