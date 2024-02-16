@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { ComponentData, CoverageArea } from "../interfaces";
-import { GroupZoneData, ZoneData, ZonesData, airHandlerMap } from "../business";
+import { ComponentData, CoverageArea, generations } from "../interfaces";
+import { CondenserSpecs, GroupZoneData, GroupZonesMap, IncommingGroupZoneData, ZoneData, ZoneMap, ZonesData, ZonesMap, airHandlerMap, condenserMap } from "../business";
 import { coverageAreaMap, equipmentData } from "../../../../data/equipment";
 
 // For all zones, square footage of zone or room determines the equipment needs. The spec for this 
@@ -29,8 +29,60 @@ import { coverageAreaMap, equipmentData } from "../../../../data/equipment";
 // to buy a dual zone bundle and not have use of the addational air handler, lineset and remote. 
 // Like wise for Tri, Perta, Quad and Hexa
 
-type ZoneMap = Map<string, ZoneData>;
-type ZonesMap = Map<string, ZoneMap>;
+const patterns: { [key: string]: Map<string, RegExp> } = {
+    condensers: new Map([
+        ['single', /^([A-Z]+)-([A-Z0-9]+)-(.+)-(.)-(\d{3})(\d+|.)/],
+        ['multi', /^([A-Z]+)-MULTI(\d{1})-(\d{2})HP(\d{3})(.)/],
+    ]),
+    airHandlers: new Map([
+        ['WMAH', /^([A-Z]+)-([A-Z0-9]+)-(.+)-(.+)-(\d{3})(\d+|.)(\d{2})/],
+        ['CASS', /^(.+)(CASSETTE)(\d{2})(.+)-(\d{3})(.)(\d{2})/],
+    ]),
+};
+
+function factoryCondenserSpecs(): CondenserSpecs {
+    return {
+        heads: 0,
+        condenserModel: {},
+        btu: 0,
+        airHandlers: {
+            size: []
+        }
+    };
+}
+
+function getCondensor(zoneData: ZoneMap): CondenserSpecs {
+    const specs = factoryCondenserSpecs();
+    const ah = specs.airHandlers;
+
+    zoneData.forEach(data => {
+        ah.size.push(Number(data.airHandler?.size));
+    })
+
+    specs.heads = ah.size.length;
+    specs.btu = Number(ah.size.reduce((acc, val) => val));
+
+
+    // TODO this is an array. We need to handle this correctly for Single zone condensers.
+    const condenserModel = (<string[]>condenserMap.get(specs.heads))[0];
+    const condenserType = specs.heads === 1 ? 'single' : specs.heads <= 6 ? 'multi' : '';
+    const match = condenserModel.match(<RegExp>patterns.condensers.get(condenserType)) as RegExpExecArray;
+    const [model, series, zones, btu, voltage, generation] = [...match];
+
+    specs.condenserModel[condenserModel] = {
+        series,
+        zones: Number(zones),
+        btu: {
+            size: Number(btu),
+            min: Number(btu) * (1 - 0.33),
+            max: Number(btu) * (1 + 0.33),
+        },
+        voltage,
+        generation: generations.get(generation),
+    };
+
+    return specs;
+}
 
 function findAirHandlerMatch(map: Map<string, number>, zoneData: ZoneData, _size: number): ComponentData {
     let equipment: ComponentData = {};
@@ -39,8 +91,6 @@ function findAirHandlerMatch(map: Map<string, number>, zoneData: ZoneData, _size
         if (size === _size) {
             const airHandlerSpec = equipmentData.airHandler[modelNumber];
 
-            console.log(equipmentData.airHandler[modelNumber]);
-
             if (zoneData?.mount === 'CASS' && airHandlerSpec.mount === 'CASS') {
                 equipment[modelNumber] = equipmentData.airHandler[modelNumber];
             }
@@ -48,12 +98,10 @@ function findAirHandlerMatch(map: Map<string, number>, zoneData: ZoneData, _size
             if (zoneData?.mount === 'WMAH' && airHandlerSpec.mount === 'WMAH') {
                 equipment[modelNumber] = equipmentData.airHandler[modelNumber];
             }
-            
+
             if (!zoneData?.mount || zoneData?.mount === 'MIX') {
                 equipment[modelNumber] = equipmentData.airHandler[modelNumber];
             }
-
-
         }
     });
 
@@ -83,32 +131,37 @@ function getZoneMap(_zones: ZonesData): ZoneMap {
             zoneData.airHandler = findAreaMatch(coverageAreaMap, zoneData);
             zones.set(name, zoneData);
         }
-    })
+    });
 
     return zones;
 }
 
-function getGroupsMap(_groups: GroupZoneData): ZonesMap {
-    const group: ZonesMap = new Map();
+function getGroupsMap(_groups: IncommingGroupZoneData): GroupZonesMap {
+    const group: GroupZonesMap = new Map();
 
     Object.keys(_groups).forEach(groupName => {
-        const data = _groups[groupName]
-        group.set(groupName, getZoneMap(data));
+        const data = _groups[groupName];
+        const zonesData = getZoneMap(data)
+        const z: GroupZoneData = {
+            zones: zonesData,
+            condenser: getCondensor(zonesData),
+        }
+        group.set(groupName, z);
     });
 
     return group;
 }
 
-function identifyCondensor() {
-
-}
-
-function zoneMap2Object(groups: ZonesMap): ZonesData {
+function zoneMap2Object(groups: GroupZonesMap): { [k: string]: GroupZoneData } {
     const parent = Object.fromEntries(groups);
 
     groups.forEach((group, key) => {
-        parent[key] = <ZoneData>Object.fromEntries(<any>group);
+        parent[key] = {
+            zones: <ZoneData>Object.fromEntries(<any>group.zones),
+            condenser: group.condenser,
+        }
     });
+
 
     return parent;
 }
@@ -122,9 +175,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
 
     const zoneMap = getGroupsMap(req.body.groups);
-
-    console.log(zoneMap);
-
 
     // const m2o = map => Object.fromEntries(map.entries())
 

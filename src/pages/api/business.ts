@@ -22,8 +22,38 @@ export interface ZonesData {
     [zone: string]: ZoneData,
 }
 
-export interface GroupZoneData  {
-    [groups: string]: ZonesData,
+export interface IncommingGroupZoneData {
+    [groups: string]: ZonesData
+}
+
+export interface GroupZoneData {
+        zones: ZoneMap | ZoneData,
+        condenser: CondenserSpecs,
+}
+
+export type ZoneMap = Map<string, ZoneData>;
+export type ZonesMap = Map<string, ZoneMap>;
+export type GroupZonesMap = Map<string, GroupZoneData>;
+
+interface CondenserModel {
+    series: string,
+    zones: number,
+    btu: {
+        size: number,
+        min: number,
+        max: number,
+    },
+    voltage: string,
+    generation: number | undefined,
+}
+
+export interface CondenserSpecs {
+    heads: number,
+    condenserModel: { [model: string]: CondenserModel },
+    btu:  number,
+    airHandlers: {
+        size: number[],
+    },
 }
 
 export const condenserMap = new Map<number, string[]>(

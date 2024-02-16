@@ -18,14 +18,14 @@ enum BTUs {
     '60K' = 60000,
 }
 
-enum DIYGenerations {
-    '1st',
-    '2nd',
-    '3rd',
-    '4th',
-    '5th',
-    '6th',
-}
+export const generations: Map<string, number> = new Map([
+    ['', 1],
+    ['A', 2],
+    ['B', 3],
+    ['C', 4],
+    ['D', 5],
+    ['E', 6],
+]);
 
 enum Couplers {
     '14-12' = 1412,
@@ -38,9 +38,8 @@ export enum AirHandlerMounts {
     'MIX' = 'Mixed WMAH & CASS',
 }
 
-type VoltageTypes = keyof typeof Voltages;
+export type VoltageTypes = keyof typeof Voltages;
 type BTUTypes = keyof typeof BTUs;
-type DIYGenerationTypes = keyof typeof DIYGenerations;
 type CouplerTypes = keyof typeof Couplers;
 export type AirHandlerMountTypes = keyof typeof AirHandlerMounts;
 
