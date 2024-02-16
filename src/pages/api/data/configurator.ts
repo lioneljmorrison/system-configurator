@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { ComponentData, CoverageArea } from "../interfaces";
+import { AirHandlerMounts, ComponentData, CoverageArea } from "../interfaces";
 import { GroupZoneData, ZoneData, ZonesData, airHandlerMap } from "../business";
 import { coverageAreaMap, equipmentData } from "../../../../data/equipment";
 
@@ -31,40 +31,56 @@ import { coverageAreaMap, equipmentData } from "../../../../data/equipment";
 
 
 
-function findAirHandlerMatch(map: Map<string, number>, _size: number): ComponentData {
+function findAirHandlerMatch(map: Map<string, number>, zoneData: ZoneData, _size: number): ComponentData {
     let equipment: ComponentData = {};
 
     map.forEach((size, modelNumber) => {
         if (size === _size) {
-            equipment[modelNumber] = equipmentData.airHandler[modelNumber];
+            const airHandlerSpec = equipmentData.airHandler[modelNumber];
+
+            console.log(equipmentData.airHandler[modelNumber]);
+
+            if (zoneData?.mount === 'CASS' && airHandlerSpec.mount === 'CASS') {
+                equipment[modelNumber] = equipmentData.airHandler[modelNumber];
+            }
+
+            if (zoneData?.mount === 'WMAH' && airHandlerSpec.mount === 'WMAH') {
+                equipment[modelNumber] = equipmentData.airHandler[modelNumber];
+            }
+            
+            if (!zoneData?.mount || zoneData?.mount === 'MIX') {
+                equipment[modelNumber] = equipmentData.airHandler[modelNumber];
+            }
+
+
         }
     });
 
     return equipment;
 }
 
-function findAreaMatch(map: Map<number, CoverageArea>, sqft: number): {size: number, component: ComponentData } {
-    let size:number = 0;
-    
+function findAreaMatch(map: Map<number, CoverageArea>, zoneData: ZoneData): { size: number, component: ComponentData } {
+    let size: number = 0;
+
     map.forEach((coverage, key) => {
         const min = coverage?.min ?? 1;
-        if ((sqft >= min) && (sqft <= coverage.max)) {
+        if ((zoneData.sqft >= min) && (zoneData.sqft <= coverage.max)) {
             size = Number(key);
         }
     });
 
-    return { size, component: findAirHandlerMatch(airHandlerMap, size)} ;
+    return { size, component: findAirHandlerMatch(airHandlerMap, zoneData, size) };
 }
 
 function getZoneMap(_zones: ZonesData): Map<string, ZoneData> {
     let zones = new Map<string, ZoneData>();
 
     Object.entries(_zones).forEach((zone, idx) => {
-        const [name, data] = [...zone];
+        const [name, zoneData] = [...zone];
 
-        if (!data?.ignore) {
-            data.airHandler = findAreaMatch(coverageAreaMap, data.sqft);
-            zones.set(name, data);
+        if (!zoneData?.ignore) {
+            zoneData.airHandler = findAreaMatch(coverageAreaMap, zoneData);
+            zones.set(name, zoneData);
         }
     })
 
@@ -72,7 +88,7 @@ function getZoneMap(_zones: ZonesData): Map<string, ZoneData> {
 }
 
 function getGroupsMap(_groups: GroupZoneData): Map<string, Map<string, ZoneData>> {
-    const group:Map<string, Map<string, ZoneData>> = new Map();
+    const group: Map<string, Map<string, ZoneData>> = new Map();
 
     Object.keys(_groups).forEach(groupName => {
         const data = _groups[groupName]
@@ -94,15 +110,15 @@ function zoneMap2Object(groups: Map<string, ZoneData>): ZonesData {
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     const params = req?.query;
-    
+
     if (!req?.body?.groups) {
         res.status(400).json({ status: 'filed', message: 'No zone data' });
     }
 
-    
+
     const zoneMap = getGroupsMap(req.body.groups);
 
-    
+
     // const m2o = map => Object.fromEntries(map.entries())
 
     res.status(200).json({ status: 'success', data: zoneMap2Object(zoneMap) });

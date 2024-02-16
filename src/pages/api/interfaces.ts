@@ -32,9 +32,10 @@ enum Couplers {
     '38-58' = 3858,
 }
 
-enum AirHandlerMounts {
-    'WHAH' = 'Wall Mounted Air Handler',
+export enum AirHandlerMounts {
+    'WMAH' = 'Wall Mounted Air Handler',
     'CASS' = 'Ceiling Mounted Cassette',
+    'MIX' = 'Mixed WMAH & CASS',
 }
 
 type VoltageTypes = keyof typeof Voltages;

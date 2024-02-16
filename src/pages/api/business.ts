@@ -1,4 +1,4 @@
-import { ComponentData } from "./interfaces";
+import { AirHandlerMountTypes, ComponentData } from "./interfaces";
 
 export interface AirHandlerCombos {
     [key: string]: {
@@ -15,6 +15,7 @@ export interface ZoneData {
     distance: number,
     ignore?: boolean,
     airHandler?: { size: number, component: ComponentData },
+    mount?: AirHandlerMountTypes,
 }
 
 export interface ZonesData {
