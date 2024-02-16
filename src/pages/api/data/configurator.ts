@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { AirHandlerMounts, ComponentData, CoverageArea } from "../interfaces";
+import { ComponentData, CoverageArea } from "../interfaces";
 import { GroupZoneData, ZoneData, ZonesData, airHandlerMap } from "../business";
 import { coverageAreaMap, equipmentData } from "../../../../data/equipment";
 
@@ -29,7 +29,8 @@ import { coverageAreaMap, equipmentData } from "../../../../data/equipment";
 // to buy a dual zone bundle and not have use of the addational air handler, lineset and remote. 
 // Like wise for Tri, Perta, Quad and Hexa
 
-
+type ZoneMap = Map<string, ZoneData>;
+type ZonesMap = Map<string, ZoneMap>;
 
 function findAirHandlerMatch(map: Map<string, number>, zoneData: ZoneData, _size: number): ComponentData {
     let equipment: ComponentData = {};
@@ -72,8 +73,8 @@ function findAreaMatch(map: Map<number, CoverageArea>, zoneData: ZoneData): { si
     return { size, component: findAirHandlerMatch(airHandlerMap, zoneData, size) };
 }
 
-function getZoneMap(_zones: ZonesData): Map<string, ZoneData> {
-    let zones = new Map<string, ZoneData>();
+function getZoneMap(_zones: ZonesData): ZoneMap {
+    let zones: ZoneMap = new Map();
 
     Object.entries(_zones).forEach((zone, idx) => {
         const [name, zoneData] = [...zone];
@@ -87,8 +88,8 @@ function getZoneMap(_zones: ZonesData): Map<string, ZoneData> {
     return zones;
 }
 
-function getGroupsMap(_groups: GroupZoneData): Map<string, Map<string, ZoneData>> {
-    const group: Map<string, Map<string, ZoneData>> = new Map();
+function getGroupsMap(_groups: GroupZoneData): ZonesMap {
+    const group: ZonesMap = new Map();
 
     Object.keys(_groups).forEach(groupName => {
         const data = _groups[groupName]
@@ -98,7 +99,11 @@ function getGroupsMap(_groups: GroupZoneData): Map<string, Map<string, ZoneData>
     return group;
 }
 
-function zoneMap2Object(groups: Map<string, ZoneData>): ZonesData {
+function identifyCondensor() {
+
+}
+
+function zoneMap2Object(groups: ZonesMap): ZonesData {
     const parent = Object.fromEntries(groups);
 
     groups.forEach((group, key) => {
@@ -117,6 +122,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
 
     const zoneMap = getGroupsMap(req.body.groups);
+
+    console.log(zoneMap);
 
 
     // const m2o = map => Object.fromEntries(map.entries())
