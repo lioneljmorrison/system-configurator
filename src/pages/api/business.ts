@@ -1,3 +1,5 @@
+import { ComponentData } from "./interfaces";
+
 export interface AirHandlerCombos {
     [key: string]: {
         [key: number]: number[][],
@@ -8,13 +10,11 @@ export interface CondenserCombos {
     [key: string]: string[],
 }
 
-
-
 export interface ZoneData {
     sqft: number,
     distance: number,
     ignore?: boolean,
-    airHandler?: { size: number, airHandler: string[] },
+    airHandler?: { size: number, component: ComponentData },
 }
 
 export interface ZonesData {

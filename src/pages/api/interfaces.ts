@@ -32,10 +32,16 @@ enum Couplers {
     '38-58' = 3858,
 }
 
+enum AirHandlerMounts {
+    'WHAH' = 'Wall Mounted Air Handler',
+    'CASS' = 'Ceiling Mounted Cassette',
+}
+
 type VoltageTypes = keyof typeof Voltages;
 type BTUTypes = keyof typeof BTUs;
 type DIYGenerationTypes = keyof typeof DIYGenerations;
 type CouplerTypes = keyof typeof Couplers;
+export type AirHandlerMountTypes = keyof typeof AirHandlerMounts;
 
 interface LinesetData {
     [key: string]: {
@@ -47,12 +53,13 @@ interface LinesetData {
 
 export interface CoverageArea { min?: number, max: number }
 
-interface ComponentData {
+export interface ComponentData {
     [key: string]: {
         zones: number,
         voltage: VoltageTypes,
         btu: BTUTypes,
         coverageArea: CoverageArea,
+        mount?: AirHandlerMountTypes,
         hidden?: boolean,
         legacy?: boolean,
         available?: boolean,

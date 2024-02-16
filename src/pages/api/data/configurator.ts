@@ -1,7 +1,7 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { CoverageArea } from "../interfaces";
+import { ComponentData, CoverageArea } from "../interfaces";
 import { GroupZoneData, ZoneData, ZonesData, airHandlerMap } from "../business";
-import { coverageAreaMap } from "../../../../data/equipment";
+import { coverageAreaMap, equipmentData } from "../../../../data/equipment";
 
 // For all zones, square footage of zone or room determines the equipment needs. The spec for this 
 // can be found in CoverageAreaMap
@@ -30,19 +30,22 @@ import { coverageAreaMap } from "../../../../data/equipment";
 // Like wise for Tri, Perta, Quad and Hexa
 
 
-function findAirHandlerMatch(map: Map<string, number>, _size: number): string[] {
-    let equipment: string[] = [];
+
+function findAirHandlerMatch(map: Map<string, number>, _size: number): ComponentData {
+    let equipment: ComponentData = {};
 
     map.forEach((size, modelNumber) => {
         if (size === _size) {
-            equipment.push(modelNumber);
+            const data = equipmentData.airHandler[modelNumber];
+
+            equipment[modelNumber] = equipmentData.airHandler[modelNumber];
         }
     });
 
     return equipment;
 }
 
-function findAreaMatch(map: Map<number, CoverageArea>, sqft: number): {size: number, airHandler: string[] } {
+function findAreaMatch(map: Map<number, CoverageArea>, sqft: number): {size: number, component: ComponentData } {
     let size:number = 0;
     
     map.forEach((coverage, key) => {
@@ -52,8 +55,7 @@ function findAreaMatch(map: Map<number, CoverageArea>, sqft: number): {size: num
         }
     });
 
-    return { size, airHandler: findAirHandlerMatch(airHandlerMap, size)} ;
-
+    return { size, component: findAirHandlerMatch(airHandlerMap, size)} ;
 }
 
 function getZoneMap(_zones: ZonesData): Map<string, ZoneData> {
@@ -99,6 +101,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!req?.body?.groups) {
         res.status(400).json({ status: 'filed', message: 'No zone data' });
     }
+
     
     const zoneMap = getGroupsMap(req.body.groups);
 
