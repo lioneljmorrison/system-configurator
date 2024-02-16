@@ -62,24 +62,46 @@ function getCondensor(zoneData: ZoneMap): CondenserSpecs {
     specs.heads = ah.size.length;
     specs.btu = Number(ah.size.reduce((acc, val) => val));
 
-
-    // TODO this is an array. We need to handle this correctly for Single zone condensers.
-    const condenserModel = (<string[]>condenserMap.get(specs.heads))[0];
+    const condensers = <string[]>condenserMap.get(specs.heads);
     const condenserType = specs.heads === 1 ? 'single' : specs.heads <= 6 ? 'multi' : '';
-    const match = condenserModel.match(<RegExp>patterns.condensers.get(condenserType)) as RegExpExecArray;
-    const [model, series, zones, btu, voltage, generation] = [...match];
 
-    specs.condenserModel[condenserModel] = {
-        series,
-        zones: Number(zones),
-        btu: {
-            size: Number(btu),
-            min: Number(btu) * (1 - 0.33),
-            max: Number(btu) * (1 + 0.33),
-        },
-        voltage,
-        generation: generations.get(generation),
-    };
+    let condenser = '';
+
+    condensers.forEach(item => {
+        const match = item.match(<RegExp>patterns.condensers.get(condenserType)) as RegExpExecArray;
+
+        if (specs.heads > 1) {
+            const [_, series, zones, btu, voltage, generation] = [...match];
+
+            specs.condenserModel[item] = {
+                series,
+                zones: Number(zones),
+                btu: {
+                    size: Number(btu),
+                    min: Number(btu) * (1 - 0.33),
+                    max: Number(btu) * (1 + 0.33),
+                },
+                voltage,
+                generation: generations.get(generation),
+            };
+        } else {
+            const [_, series, btu, voltage, generation] = [...match];
+
+            if (Number(btu) === specs.btu) {
+                specs.condenserModel[item] = {
+                    series,
+                    zones: 1,
+                    btu: {
+                        size: Number(btu),
+                        min: Number(btu) * (1 - 0.33),
+                        max: Number(btu) * (1 + 0.33),
+                    },
+                    voltage,
+                    generation: generations.get(generation),
+                };
+            }
+        }
+    });
 
     return specs;
 }
